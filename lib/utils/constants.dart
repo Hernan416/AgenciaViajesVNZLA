@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 // REEMPLAZA ESTO CON TUS CREDENCIALES REALES DE SUPABASE
-const supabaseUrl = 'TU_URL_DE_SUPABASE'; 
-const supabaseAnonKey = 'TU_ANON_KEY_DE_SUPABASE';
+const supabaseUrl = 'https://lavkaxojvdwukzafqkuq.supabase.co'; 
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdmtheG9qdmR3dWt6YWZxa3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NDQ4NzAsImV4cCI6MjA4MDAyMDg3MH0.XLO_4XtNXvlACNnWDornOWUPdDrg7zN_dkZxVhdO8qg';
 
 // Mapeo de iconos que vienen de la BD (texto) a Iconos de Flutter
 IconData getIconFromKey(String key) {
