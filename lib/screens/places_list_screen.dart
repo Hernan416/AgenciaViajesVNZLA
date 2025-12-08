@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/category_model.dart';
 import '../models/place_model.dart';
+import '../utils/constants.dart'; // Para colores
 import 'place_detail_screen.dart';
 
 class PlacesListScreen extends StatelessWidget {
@@ -11,7 +13,6 @@ class PlacesListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Consulta a la tabla 'places' filtrando por category_id
     final future = Supabase.instance.client
         .from('places')
         .select()
@@ -26,46 +27,127 @@ class PlacesListScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No hay lugares en esta categoría aún."));
+            return Center(child: Text("No hay lugares disponibles.", style: GoogleFonts.poppins()));
           }
 
           final places = snapshot.data!.map((e) => Place.fromMap(e)).toList();
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
+          return ListView.separated(
+            padding: const EdgeInsets.all(20),
             itemCount: places.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 24),
             itemBuilder: (context, index) {
               final place = places[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: InkWell(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => PlaceDetailScreen(place: place))
-                  ),
-                  child: Column(
-                    children: [
-                      Image.network(
-                        place.thumbnailUrl, 
-                        height: 180, 
-                        width: double.infinity, 
-                        fit: BoxFit.cover,
-                        errorBuilder: (_,__,___) => Container(height: 180, color: Colors.grey),
-                      ),
-                      ListTile(
-                        title: Text(place.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(place.address),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 20),
-                            Text(place.rating.toString()),
-                          ],
-                        ),
-                      ),
+              return GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => PlaceDetailScreen(place: place))
+                ),
+                child: Container(
+                  height: 280,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
+                      )
                     ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      children: [
+                        // IMAGEN DE FONDO
+                        // IMAGEN DE FONDO (Híbrida: Internet o Local)
+                        Positioned.fill(
+                          child: place.thumbnailUrl.startsWith('http')
+                              ? Image.network(
+                                  place.thumbnailUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_,__,___) => Container(color: Colors.grey[300]),
+                                )
+                              : Image.asset(
+                                  place.thumbnailUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_,__,___) => Container(
+                                    color: Colors.grey[300], 
+                                    child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
+                                  ),
+                                ),
+                        ),
+                        // DEGRADADO OSCURO
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.8)
+                                ],
+                                stops: const [0.6, 1.0],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // TEXTO
+                        Positioned(
+                          bottom: 20,
+                          left: 20,
+                          right: 20,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                place.name,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on, color: kSecondaryColor, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    place.address,
+                                    style: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.9)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // RATING
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20)
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star_rounded, color: kSecondaryColor, size: 18),
+                                const SizedBox(width: 4),
+                                Text(
+                                  place.rating.toString(),
+                                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
               );

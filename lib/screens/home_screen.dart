@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/category_model.dart';
 import '../utils/constants.dart';
 import '../services/auth_service.dart';
@@ -24,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _loadUser() async {
     final name = await AuthService.getCurrentUserName();
-    setState(() => userName = name);
+    if (mounted) setState(() => userName = name);
   }
 
   @override
@@ -36,16 +37,15 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text("Margarita Travel 🌴"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.exit_to_app),
+            icon: const Icon(Icons.exit_to_app, color: Colors.redAccent),
             onPressed: () async {
               await AuthService.logout();
-              if (mounted) {
-                 Navigator.pushAndRemoveUntil(
-                   context, 
-                   MaterialPageRoute(builder: (_) => const LoginScreen()), 
-                   (r) => false
-                 );
-              }
+              if (!context.mounted) return;
+              Navigator.pushAndRemoveUntil(
+                context, 
+                MaterialPageRoute(builder: (_) => const LoginScreen()), 
+                (r) => false
+              );
             },
           )
         ],
@@ -54,9 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text("Hola, $userName 👋\n¿A dónde vamos hoy?", 
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+            child: Text(
+              "Hola, $userName 👋\n¿Qué quieres descubrir?", 
+              style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: kTextColor),
+            ),
           ),
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
@@ -67,12 +69,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 final categories = snapshot.data!.map((e) => Category.fromMap(e)).toList();
 
                 return GridView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.2
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 20,
+                    childAspectRatio: 1.1 
                   ),
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
@@ -82,16 +84,38 @@ class _HomeScreenState extends State<HomeScreen> {
                         context, 
                         MaterialPageRoute(builder: (_) => PlacesListScreen(category: cat))
                       ),
-                      child: Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        color: Colors.white,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: kPrimaryColor.withValues(alpha: 0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            )
+                          ],
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(getIconFromKey(cat.iconKey), size: 40, color: Colors.blue),
-                            const SizedBox(height: 10),
-                            Text(cat.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: kPrimaryColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(getIconFromKey(cat.iconKey), size: 32, color: kPrimaryColor),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              cat.name,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16, 
+                                fontWeight: FontWeight.w600,
+                                color: kTextColor
+                              ),
+                            ),
                           ],
                         ),
                       ),

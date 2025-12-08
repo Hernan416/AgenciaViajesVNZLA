@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../utils/constants.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,23 +24,17 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     
     if (_isRegistering) {
-      // REGISTRO
       final success = await AuthService.register(
         _emailCtrl.text.trim(), 
         _passCtrl.text.trim(), 
         _nameCtrl.text.trim()
       );
-      
       if (success && mounted) {
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cuenta creada. Inicia sesión.')));
          setState(() => _isRegistering = false);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: El correo ya existe')));
       }
     } else {
-      // LOGIN
       final user = await AuthService.login(_emailCtrl.text.trim(), _passCtrl.text.trim());
-      
       if (user != null && mounted) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
       } else if (mounted) {
@@ -55,51 +51,61 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(30),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.beach_access, size: 80, color: Colors.blue),
+              const Icon(Icons.beach_access_rounded, size: 80, color: kPrimaryColor),
               const SizedBox(height: 20),
               Text(
-                _isRegistering ? 'Únete a la Isla' : 'Bienvenido a Margarita',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                _isRegistering ? 'Únete al Paraíso' : 'Bienvenido de nuevo',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.bold, color: kTextColor),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 10),
+              Text(
+                "La Isla de Margarita te espera",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16),
+              ),
+              const SizedBox(height: 40),
               
               if (_isRegistering)
-                TextField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Nombre Completo', border: OutlineInputBorder()),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: TextField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Nombre Completo', prefixIcon: Icon(Icons.person_outline)),
+                  ),
                 ),
-              if (_isRegistering) const SizedBox(height: 16),
               
               TextField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Correo', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Correo Electrónico', prefixIcon: Icon(Icons.email_outlined)),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Contraseña', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Contraseña', prefixIcon: Icon(Icons.lock_outline)),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 30),
               
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text(_isRegistering ? 'REGISTRARSE' : 'ENTRAR'),
-                ),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _submit,
+                child: _isLoading 
+                  ? const CircularProgressIndicator(color: Colors.white) 
+                  : Text(_isRegistering ? 'CREAR CUENTA' : 'INICIAR SESIÓN'),
               ),
               
+              const SizedBox(height: 20),
               TextButton(
                 onPressed: () => setState(() => _isRegistering = !_isRegistering),
-                child: Text(_isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿Nuevo aquí? Regístrate'),
+                child: Text(
+                  _isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate',
+                  style: GoogleFonts.poppins(color: kPrimaryColor, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),

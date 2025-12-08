@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 const supabaseUrl = 'https://lavkaxojvdwukzafqkuq.supabase.co'; 
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdmtheG9qdmR3dWt6YWZxa3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NDQ4NzAsImV4cCI6MjA4MDAyMDg3MH0.XLO_4XtNXvlACNnWDornOWUPdDrg7zN_dkZxVhdO8qg';
 
-// Mapeo de iconos que vienen de la BD (texto) a Iconos de Flutter
+const kPrimaryColor = Color(0xFF00A896);
+const kSecondaryColor = Color(0xFFFFC857);
+const kTextColor = Color(0xFF2D3142);
+const kBackgroundColor = Color(0xFFF8F9FA); // Esto corrige el error de tu Imagen 2
+
 IconData getIconFromKey(String key) {
   switch (key) {
     case 'restaurant': return Icons.restaurant;
