@@ -25,14 +25,18 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   Map<String, dynamic>? _contactInfo; 
   int? _selectedRoomTypeId;
   
-  // VARIABLES NUEVAS (MENU Y TIPO DE COCINA)
+  // VARIABLES DE MENÚ Y COCINA
   String? _cuisineType; 
-  Map<String, List<Map<String, dynamic>>> _menuGrouped = {}; // Menú agrupado por categorías
+  Map<String, List<Map<String, dynamic>>> _menuGrouped = {};
+
+  // VARIABLE DE FAVORITO (RECUPERADA)
+  bool _isFavorite = false; 
 
   @override
   void initState() {
     super.initState();
     _loadDetails();
+    _checkFavoriteStatus(); // <-- RECUPERADO
   }
 
   void _loadDetails() async {
@@ -40,32 +44,21 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
 
     // 1. Cargar Amenidades
     final amenitiesData = await client.from('place_amenities').select('amenities(*)').eq('place_id', widget.place.id);
-    
     // 2. Cargar Habitaciones
     final roomsData = await client.from('hotel_rooms').select('*, room_types(*)').eq('place_id', widget.place.id);
-
     // 3. Cargar Contacto
     final contactData = await client.from('place_contacts').select().eq('place_id', widget.place.id).maybeSingle();
-
-    // 4. (NUEVO) Cargar Tipo de Cocina
-    // Hacemos una consulta extra a 'places' para traer el nombre de la cocina
+    // 4. Cargar Tipo de Cocina
     final placeData = await client.from('places').select('cuisine_types(name)').eq('id', widget.place.id).single();
     final cuisineName = placeData['cuisine_types'] != null ? placeData['cuisine_types']['name'] : null;
+    // 5. Cargar Menú
+    final menuData = await client.from('menu_items').select('*, menu_categories(name)').eq('place_id', widget.place.id).order('price', ascending: true);
 
-    // 5. (NUEVO) Cargar y Agrupar el Menú
-    final menuData = await client
-        .from('menu_items')
-        .select('*, menu_categories(name)') // Traemos el nombre de la categoría
-        .eq('place_id', widget.place.id)
-        .order('price', ascending: true); // Ordenar por precio (opcional)
-
-    // Lógica para agrupar: {'Entradas': [item1, item2], 'Bebidas': [item3]...}
+    // Agrupar Menú
     Map<String, List<Map<String, dynamic>>> grouped = {};
     for (var item in menuData) {
       final categoryName = item['menu_categories']['name'] as String;
-      if (!grouped.containsKey(categoryName)) {
-        grouped[categoryName] = [];
-      }
+      if (!grouped.containsKey(categoryName)) grouped[categoryName] = [];
       grouped[categoryName]!.add(item);
     }
 
@@ -80,6 +73,33 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     }
   }
 
+  // --- LÓGICA DE FAVORITOS (RECUPERADA) ---
+  void _checkFavoriteStatus() async {
+    final userId = await AuthService.getCurrentUserId();
+    if (userId == null) return;
+    final data = await Supabase.instance.client.from('favorites').select().eq('user_id', userId).eq('place_id', widget.place.id).maybeSingle();
+    if (mounted && data != null) setState(() => _isFavorite = true);
+  }
+
+  void _toggleFavorite() async {
+    final userId = await AuthService.getCurrentUserId();
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inicia sesión para guardar favoritos')));
+      return;
+    }
+    setState(() => _isFavorite = !_isFavorite); 
+    try {
+      if (_isFavorite) {
+        await Supabase.instance.client.from('favorites').insert({'user_id': userId, 'place_id': widget.place.id});
+      } else {
+        await Supabase.instance.client.from('favorites').delete().eq('user_id', userId).eq('place_id', widget.place.id);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isFavorite = !_isFavorite);
+    }
+  }
+  // ----------------------------------------
+
   Future<void> _makeReservation() async {
     if (_rooms.isNotEmpty && _selectedRoomTypeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor selecciona un tipo de habitación')));
@@ -87,12 +107,10 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     }
     setState(() => _isBooking = true);
     final userId = await AuthService.getCurrentUserId();
-    
     if (userId == null) {
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inicia sesión para reservar')));
       return;
     }
-
     try {
       await Supabase.instance.client.from('bookings').insert({
         'user_id': userId,
@@ -134,6 +152,17 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   top: 50, left: 20,
                   child: CircleAvatar(backgroundColor: Colors.white, child: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context))),
                 ),
+                // --- BOTÓN DE FAVORITO (RECUPERADO) ---
+                Positioned(
+                  top: 50, right: 20,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: IconButton(
+                      icon: Icon(_isFavorite ? Icons.favorite : Icons.favorite_border, color: _isFavorite ? Colors.red : Colors.grey),
+                      onPressed: _toggleFavorite,
+                    ),
+                  ),
+                ),
               ],
             ),
             
@@ -141,10 +170,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
             Transform.translate(
               offset: const Offset(0, -30),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: kBackgroundColor,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
+                decoration: const BoxDecoration(color: kBackgroundColor, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,15 +185,10 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(widget.place.name, style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.bold, color: kTextColor)),
-                              
-                              // (NUEVO) TIPO DE COCINA
                               if (_cuisineType != null)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text(
-                                    _cuisineType!.toUpperCase(),
-                                    style: GoogleFonts.poppins(fontSize: 12, color: kPrimaryColor, fontWeight: FontWeight.w600, letterSpacing: 1.0),
-                                  ),
+                                  child: Text(_cuisineType!.toUpperCase(), style: GoogleFonts.poppins(fontSize: 12, color: kPrimaryColor, fontWeight: FontWeight.w600, letterSpacing: 1.0)),
                                 ),
                             ],
                           ),
@@ -185,15 +206,11 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     // CONTACTO
                     if (_contactInfo != null) ...[
                       const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          if (_contactInfo!['phone'] != null)
-                            Expanded(child: _ContactButton(icon: Icons.phone, text: _contactInfo!['phone'])),
+                      Row(children: [
+                          if (_contactInfo!['phone'] != null) Expanded(child: _ContactButton(icon: Icons.phone, text: _contactInfo!['phone'])),
                           if (_contactInfo!['phone'] != null && _contactInfo!['instagram'] != null) const SizedBox(width: 10),
-                          if (_contactInfo!['instagram'] != null)
-                            Expanded(child: _ContactButton(icon: Icons.camera_alt, text: _contactInfo!['instagram'], color: Colors.purple)),
-                        ],
-                      )
+                          if (_contactInfo!['instagram'] != null) Expanded(child: _ContactButton(icon: Icons.camera_alt, text: _contactInfo!['instagram'], color: Colors.purple)),
+                      ])
                     ],
 
                     // AMENIDADES
@@ -213,51 +230,28 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     const SizedBox(height: 8),
                     Text(widget.place.description, style: GoogleFonts.poppins(color: Colors.grey[600], height: 1.5)),
                     
-                    // --- SECCIÓN (NUEVA): MENÚ ---
+                    // MENÚ
                     if (_menuGrouped.isNotEmpty) ...[
                       const SizedBox(height: 30),
-                      Row(
-                        children: [
-                          const Icon(Icons.restaurant_menu, color: kPrimaryColor),
-                          const SizedBox(width: 8),
-                          Text("Nuestro Menú", style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
+                      Row(children: [const Icon(Icons.restaurant_menu, color: kPrimaryColor), const SizedBox(width: 8), Text("Nuestro Menú", style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold))]),
                       const SizedBox(height: 10),
-                      // Iteramos sobre las categorías (Entradas, Platos, etc.)
                       ..._menuGrouped.entries.map((entry) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
-                              child: Text(entry.key, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[800])),
-                            ),
-                            // Iteramos sobre los platos de esa categoría
+                        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Padding(padding: const EdgeInsets.symmetric(vertical: 12.0), child: Text(entry.key, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[800]))),
                             ...entry.value.map((item) => Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 5, offset: const Offset(0, 2))]),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(item['name'], style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
-                                        if (item['description'] != null)
-                                          Text(item['description'], style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                      ],
-                                    ),
-                                  ),
+                              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text(item['name'], style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      if (item['description'] != null) Text(item['description'], style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ])),
                                   const SizedBox(width: 10),
                                   Text("\$${item['price']}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 15)),
-                                ],
-                              ),
+                              ]),
                             )),
-                          ],
-                        );
+                          ]);
                       }),
                     ],
 
@@ -267,9 +261,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5))]),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text("Reserva tu visita", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
                           if (_rooms.isNotEmpty) ...[
