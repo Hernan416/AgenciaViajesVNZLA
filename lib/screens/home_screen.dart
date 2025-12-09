@@ -5,7 +5,9 @@ import '../models/category_model.dart';
 import '../utils/constants.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'bookings_screen.dart';
 import 'places_list_screen.dart';
+import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,8 +38,34 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("Margarita Travel 🌴"),
         actions: [
+          // BOTÓN DE FAVORITOS (NUEVO)
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: Colors.redAccent),
+            tooltip: 'Mis Favoritos',
+            onPressed: () {
+              Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (_) => const FavoritesScreen())
+              );
+            },
+          ),
+
+          // BOTÓN DE MIS RESERVAS
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined, color: kPrimaryColor),
+            tooltip: 'Mis Reservaciones',
+            onPressed: () {
+              Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (_) => const BookingsScreen()) // <--- Necesitas importar este archivo arriba
+              );
+            },
+          ),
+          
+          // BOTÓN DE CERRAR SESIÓN
           IconButton(
             icon: const Icon(Icons.exit_to_app, color: Colors.redAccent),
+            tooltip: 'Cerrar Sesión',
             onPressed: () async {
               await AuthService.logout();
               if (!context.mounted) return;
@@ -47,7 +75,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 (r) => false
               );
             },
-          )
+          ),
+          const SizedBox(width: 10), // Espacio extra a la derecha
         ],
       ),
       body: Column(
